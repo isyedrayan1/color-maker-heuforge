@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HueForge - Color Palette Generator</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.0/color-thief.umd.js"></script>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body
+    class="min-h-screen flex flex-col font-sans text-gray-100 bg-black glow-grid"
+  >
+    <!-- Sticky Floating Header -->
+    <nav
+      class="glass-header fixed top-4 left-4 right-4 sm:left-8 sm:right-8 z-20 p-4 flex justify-between items-center rounded-xl max-w-7xl mx-auto"
+    >
+      <div class="flex flex-col">
+        <div class="text-2xl font-extrabold tracking-tight fade-in">
+          HueForge
+        </div>
+        <p class="text-xs sm:text-sm reveal-text mt-1">
+          Craft stunning palettes instantly
+        </p>
+      </div>
+      <div></div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-section p-6 pt-24 min-h-screen max-w-7xl mx-auto">
+      <!-- Mode Toggle Buttons -->
+      <div class="toggle-container animate-on-scroll">
+        <button
+          id="toggleGenerate"
+          class="glass mode-active text-white font-semibold py-2 px-4 rounded-l-lg transition duration-300 text-sm"
+        >
+          Generate Palette
+        </button>
+        <button
+          id="toggleImageUpload"
+          class="glass mode-inactive text-white font-semibold py-2 px-4 rounded-r-lg transition duration-300 text-sm"
+        >
+          From Image
+        </button>
+      </div>
+      <!-- Image Upload (Hidden by Default) -->
+      <div
+        id="imageUploadSection"
+        class="hidden animate-on-scroll mb-8 w-full max-w-md"
+      >
+        <input
+          type="file"
+          id="imageUpload"
+          accept="image/jpeg,image/png"
+          class="mb-4 text-gray-100 bg-gray-700/50 rounded p-2 w-full"
+        />
+        <div class="flex justify-center mt-4">
+          <div
+            id="imagePreview"
+            class="w-48 h-48 bg-gray-200/10 rounded-lg flex items-center justify-center"
+          >
+            <p class="text-gray-400">Image preview</p>
+          </div>
+        </div>
+        <button
+          id="extractPalette"
+          class="glass w-full glow-on-hover"
+          style="border: 1px solid rgba(59, 130, 246, 0.8); margin-top: 10px"
+        >
+          Generate from Image
+        </button>
+      </div>
+      <!-- Palette Viewer - Initially Hidden -->
+      <div
+        id="paletteViewer"
+        class="glass p-4 sm:p-6 rounded-lg flex flex-col gap-4 animate-on-scroll w-full"
+        style="display: none"
+      >
+        <div id="swatchContainer" class="flex flex-row gap-1 w-full">
+          <!-- Swatches will be dynamically added here -->
+        </div>
+        <div class="flex flex-wrap gap-2 justify-center items-center">
+          <select
+            id="colorFormat"
+            class="glass bg-gray-700/50 text-white py-1 px-2 rounded-lg"
+          >
+            <option value="hex">HEX</option>
+            <option value="rgb">RGB</option>
+            <option value="hsl">HSL</option>
+          </select>
+          <button
+            id="copyPalette"
+            class="glass bg-gray-500/80 hover:bg-gray-600/80 text-white font-semibold py-1 px-3 rounded-lg transition duration-300"
+          >
+            Copy All HEX
+          </button>
+          <button
+            id="downloadPNG"
+            class="glass bg-green-500/80 hover:bg-green-600/80 text-white font-semibold py-1 px-3 rounded-lg transition duration-300"
+          >
+            PNG
+          </button>
+          <button
+            id="downloadJSON"
+            class="glass bg-purple-500/80 hover:bg-purple-600/80 text-white font-semibold py-1 px-3 rounded-lg transition duration-300"
+          >
+            JSON
+          </button>
+        </div>
+      </div>
+
+      <div id="buttonContainer" class="flex gap-2 mt-4">
+        <button
+          id="generatePalette"
+          class="glass text-white font-semibold glow-on-hover"
+          style="border: 1px solid rgba(59, 130, 246, 0.8)"
+        >
+          Generate
+        </button>
+        <div id="previewButtonContainer" class="group relative">
+          <button
+            id="previewButton"
+            class="glass text-white font-semibold py-2 px-4 rounded-lg transition duration-300 glow-on-hover"
+            style="border: 1px solid rgba(59, 130, 246, 0.8)"
+          >
+            Preview
+          </button>
+          <span class="tooltip">View Live UI Preview</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sidebar Preview -->
+    <aside
+      id="previewSection"
+      class="sidebar fixed top-0 right-0 h-full w-full sm:w-80 md:w-96 bg-gray-100/10 glass p-6 z-30 sidebar-hidden overflow-y-auto"
+    >
+      <button id="closePreview" class="absolute top-4 right-4 text-white">
+        <svg
+          class="w-6 h-6"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M6 18L18 6M6 6l12 12"
+          />
+        </svg>
+      </button>
+      <h2 class="text-2xl font-semibold mb-4">Live UI Preview</h2>
+      <div id="uiPreview" class="bg-gray-100/10 rounded-lg overflow-hidden">
+        <header class="preview-element p-4">
+          <div class="flex justify-between items-center">
+            <div class="fade-in flex space-x-3">
+              <div class="w-3 h-3 rounded-full bg-white/30"></div>
+              <div class="w-3 h-3 rounded-full bg-white/30"></div>
+              <div class="w-3 h-3 rounded-full bg-white/30"></div>
+            </div>
+            <div class="fade-in flex space-x-2">
+              <div class="w-4 h-4 rounded-full bg-white/30"></div>
+              <div class="w-4 h-4 rounded-full bg-white/30"></div>
+            </div>
+          </div>
+        </header>
+        <div class="preview-element p-6">
+          <div class="mb-6">
+            <div class="h-10 w-24 bg-white/90 rounded-full mb-4"></div>
+            <div class="h-8 w-3/4 bg-white/80 rounded-lg"></div>
+            <div class="h-6 w-1/2 bg-white/70 rounded-lg mt-3"></div>
+          </div>
+          <div class="flex gap-4">
+            <div class="preview-element h-10 w-32 rounded-lg"></div>
+            <div class="h-10 w-32 rounded-lg bg-white/20"></div>
+          </div>
+        </div>
+        <div class="preview-element p-8 bg-white/5 border-t border-white/10">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="preview-element p-4 rounded-lg">
+              <div class="h-6 w-2/3 bg-white/80 rounded-lg mb-2"></div>
+              <div class="h-4 w-full bg-white/60 rounded-lg"></div>
+            </div>
+            <div class="preview-element p-4 rounded-lg">
+              <div class="h-6 w-2/3 bg-white/80 rounded-lg mb-2"></div>
+              <div class="h-4 w-full bg-white/60 rounded-lg"></div>
+            </div>
+          </div>
+        </div>
+        <div class="preview-element p-4 border-t border-white/10"></div>
+      </div>
+    </aside>
+
+    <!-- Notification Element -->
+    <div id="notification" class="notification"></div>
+
+    <!-- Enhanced Footer -->
+    <div class="px-4 sm:px-8">
+      <footer
+        class="glass-footer p-4 flex justify-center items-center max-w-7xl mx-auto"
+      >
+        <div class="flex flex-col items-center text-center gap-4">
+          <div class="text-xl font-bold">HueForge</div>
+          <p class="text-sm">
+            Craft stunning palettes instantly — Created by
+            <span style="color: rgba(255, 161, 161, 0.8)">
+              <a href="https://isyedrayan.netlify.app">Syed Rayan</a>
+            </span>
+          </p>
+          <p class="text-xs mt-2">© 2025 HueForge. All rights reserved.</p>
+        </div>
+      </footer>
+    </div>
+  </body>
+</html>
