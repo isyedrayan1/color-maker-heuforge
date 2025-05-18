@@ -1,4 +1,4 @@
-# color-maker-heuforge
+Note: If the deployed site doesn't render the swatches. Feel free to clone the repo and try in your local server it works here. The deployment issue is being tracked and will be solved soon.
 
 HueForge - Color Palette Generator
 Project Overview
