@@ -179,74 +179,98 @@ function generatePalette() {
     newPalette = generateHarmonizedPalette(); // Fallback
   }
 
-  // Update only unlocked swatches
-  palette = palette.map((color, index) => {
-    if (lockedIndices.has(index)) {
-      return color; // Keep locked swatch unchanged
-    }
-    return newPalette[index];
-  });
+  // Always populate palette with new colors, preserving locked swatches
+  if (palette.length === 0) {
+    palette = newPalette; // If palette is empty, directly assign new colors
+  } else {
+    palette = palette.map((color, index) => {
+      if (lockedIndices.has(index)) {
+        return color; // Keep locked swatch unchanged
+      }
+      return newPalette[index];
+    });
+  }
 
   paletteViewer.style.display = "flex"; // Show palette viewer
+  console.log("Generated palette:", palette); // Debug log
   renderPalette();
   savePalette();
   updatePreview();
   updateButtonVisibility(); // Update button visibility
+
+  // Fallback visibility check
+  if (palette.length > 0) {
+    paletteViewer.style.display = "flex";
+  } else {
+    console.warn(
+      "Palette is still empty after generation. Generating a default palette."
+    );
+    palette = generateHarmonizedPalette();
+    paletteViewer.style.display = "flex";
+    renderPalette();
+  }
 }
+
 function renderPalette() {
   swatchContainer.innerHTML = "";
   palette.forEach((color, index) => {
-    const hslMatch = color.match(/hsl\((\d+), (\d+)%, (\d+)%\)/);
-    if (!hslMatch) return; // Skip if color format is invalid
-    const h = parseInt(hslMatch[1]);
-    const s = parseInt(hslMatch[2]);
-    const l = parseInt(hslMatch[3]);
-    const hex = hslToHex(h, s, l);
-    const rgb = hslToRgb(h, s, l);
-    const value =
-      currentFormat === "hex"
-        ? hex
-        : currentFormat === "rgb"
-        ? `rgb(${rgb})`
-        : color;
-    const swatch = document.createElement("div");
-    swatch.className =
-      "swatch glass flex flex-col items-center w-1/5 p-2 sm:p-3 rounded-lg";
-    swatch.innerHTML = `
-                    <div class="w-full h-32 sm:h-36 rounded" style="background-color: ${color}"></div>
-                    <p id="colorValue${index}" class="mt-2 font-mono text-xs">${value}</p>
-                    <div class="flex gap-1 mt-2">
-                        <button class="copyBtn glass bg-gray-200/20 hover:bg-gray-200/40 p-1 rounded" data-value="${value}">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                        </button>
-                        <div class="group relative">
-                            <button class="lockBtn glass p-1 rounded ${
+    try {
+      const hslMatch = color.match(/hsl\((\d+), (\d+)%, (\d+)%\)/);
+      if (!hslMatch) {
+        console.warn(
+          `Invalid color format at index ${index}: ${color}. Using fallback color.`
+        );
+        color = "hsl(0, 50%, 50%)"; // Fallback to a default red color
+      }
+      const h = parseInt(hslMatch[1]);
+      const s = parseInt(hslMatch[2]);
+      const l = parseInt(hslMatch[3]);
+      const hex = hslToHex(h, s, l);
+      const rgb = hslToRgb(h, s, l);
+      const value =
+        currentFormat === "hex"
+          ? hex
+          : currentFormat === "rgb"
+          ? `rgb(${rgb})`
+          : color;
+      const swatch = document.createElement("div");
+      swatch.className =
+        "swatch glass flex flex-col items-center w-1/5 p-2 sm:p-3 rounded-lg";
+      swatch.innerHTML = `
+            <div class="w-full h-32 sm:h-36 rounded" style="background-color: ${color}"></div>
+            <p id="colorValue${index}" class="mt-2 font-mono text-xs">${value}</p>
+            <div class="flex gap-1 mt-2">
+                <button class="copyBtn glass bg-gray-200/20 hover:bg-gray-200/40 p-1 rounded" data-value="${value}">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                </button>
+                <div class="group relative">
+                    <button class="lockBtn glass p-1 rounded ${
+                      lockedIndices.has(index)
+                        ? "bg-blue-500/80 text-white"
+                        : "bg-gray-200/20 hover:bg-gray-200/40"
+                    }" data-index="${index}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            ${
                               lockedIndices.has(index)
-                                ? "bg-blue-500/80 text-white"
-                                : "bg-gray-200/20 hover:bg-gray-200/40"
-                            }" data-index="${index}">
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    ${
-                                      lockedIndices.has(index)
-                                        ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0-1.1-.9-2-2-2s-2 .9-2 2v3h4v-3zm7 3v7H5v-7h14zm0-2H5c-1.1 0-2 .9-2 2v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7c0-1.1-.9-2-2-2zm-7-7V4c0-1.1-.9-2-2-2s-2 .9-2 2v2h4z" />'
-                                        : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0-1.1-.9-2-2-2s-2 .9-2 2v3h4v-3zm7 3v7H5v-7h14zm0-2H5c-1.1 0-2 .9-2 2v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7c0-1.1-.9-2-2-2zm-7-7V4c0-1.1-.9-2-2-2s-2 .9-2 2v2h4z" />'
-                                    }
-                            </svg>
-                            </button>
-                            <span class="tooltip">${
-                              lockedIndices.has(index)
-                                ? "Unlock Color"
-                                : "Lock Color"
-                            }</span>
-                        </div>
-                    </div>
-                    <input type="range" min="20" max="80" value="${l}" class="brightnessSlider w-full mt-2" data-index="${index}">
-                `;
-    swatchContainer.appendChild(swatch);
+                                ? '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0-1.1-.9-2-2-2s-2 .9-2 2v3h4v-3zm7 3v7H5v-7h14zm0-2H5c-1.1 0-2 .9-2 2v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7c0-1.1-.9-2-2-2zm-7-7V4c0-1.1-.9-2-2-2s-2 .9-2 2v2h4z" />'
+                                : '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0-1.1-.9-2-2-2s-2 .9-2 2v3h4v-3zm7 3v7H5v-7h14zm0-2H5c-1.1 0-2 .9-2 2v7c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-7c0-1.1-.9-2-2-2zm-7-7V4c0-1.1-.9-2-2-2s-2 .9-2 2v2h4z" />'
+                            }
+                        </svg>
+                    </button>
+                    <span class="tooltip">${
+                      lockedIndices.has(index) ? "Unlock Color" : "Lock Color"
+                    }</span>
+                </div>
+            </div>
+            <input type="range" min="20" max="80" value="${l}" class="brightnessSlider w-full mt-2" data-index="${index}">
+        `;
+      swatchContainer.appendChild(swatch);
+    } catch (err) {
+      console.error(`Error rendering swatch at index ${index}:`, err);
+    }
   });
-
   // Copy Value
   document.querySelectorAll(".copyBtn").forEach((btn) => {
     btn.removeEventListener("click", btn._copyHandler);
@@ -574,7 +598,9 @@ function savePalette() {
 }
 
 // Load Palette
+console.log("Checking localStorage for saved palette...");
 if (localStorage.getItem("hueforgePalette")) {
+  console.log("Found saved palette in localStorage");
   palette = JSON.parse(localStorage.getItem("hueforgePalette"));
   const savedLockedIndices = JSON.parse(
     localStorage.getItem("lockedIndices") || "[]"
@@ -584,5 +610,6 @@ if (localStorage.getItem("hueforgePalette")) {
   renderPalette();
   updatePreview();
 } else {
+  console.log("No saved palette found. Generating new palette...");
   generatePalette();
 }
