@@ -1,6 +1,24 @@
-if (typeof ColorThief === "undefined") {
-  console.error("ColorThief failed to load. Please check the CDN.");
+let ColorThief = null;
+
+// Dynamically load ColorThief
+async function loadColorThief() {
+  try {
+    const module = await import(
+      "https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.4.0/color-thief.umd.js"
+    );
+    ColorThief = module.default || module.ColorThief; // Handle UMD module format
+    console.log("ColorThief loaded successfully");
+  } catch (err) {
+    console.error("Failed to load ColorThief:", err);
+    ColorThief = null;
+    // Fallback to Generate Mode
+    currentMode = "generate";
+    generatePalette();
+  }
 }
+
+// Load ColorThief when the script runs
+loadColorThief();
 
 // Scroll Animations
 const animateOnScroll = () => {
@@ -374,34 +392,49 @@ document.getElementById("imageUpload").addEventListener("change", (e) => {
   reader.readAsDataURL(file);
 });
 
-document.getElementById("extractPalette").addEventListener("click", () => {
-  if (!uploadedImage) {
-    showNotification("Please upload an image first!");
-    return;
-  }
+document
+  .getElementById("extractPalette")
+  .addEventListener("click", async () => {
+    if (!uploadedImage) {
+      showNotification("Please upload an image first!");
+      return;
+    }
 
-  if (typeof ColorThief === "undefined") {
-    showNotification(
-      "Image processing library failed to load. Please try again later."
-    );
-    return;
-  }
+    // Wait for ColorThief to load
+    await loadColorThief();
 
-  const imgElement = document.getElementById("uploadedImage");
-  const colorThief = new ColorThief();
+    if (!ColorThief) {
+      showNotification(
+        "Image processing library not available. Switching to Generate Mode."
+      );
+      currentMode = "generate";
+      generatePalette();
+      return;
+    }
 
-  // Ensure image is loaded before extracting colors
-  if (imgElement.complete) {
-    extractColors(colorThief, imgElement);
-  } else {
-    imgElement.onload = () => {
-      extractColors(colorThief, imgElement);
-    };
-  }
-});
+    const imgElement = document.getElementById("uploadedImage");
+    // Ensure image is loaded before extracting colors
+    if (imgElement.complete) {
+      await extractColors(imgElement);
+    } else {
+      imgElement.onload = async () => {
+        await extractColors(imgElement);
+      };
+    }
+  });
 
-function extractColors(colorThief, imgElement) {
+async function extractColors(imgElement) {
   try {
+    if (!ColorThief) {
+      showNotification(
+        "Image processing library not available. Switching to Generate Mode."
+      );
+      currentMode = "generate";
+      generatePalette();
+      return;
+    }
+
+    const colorThief = new ColorThief();
     // Extract 5 dominant colors
     const paletteArray = colorThief.getPalette(imgElement, 5);
     const centroids = paletteArray.map((rgb) => {
@@ -421,13 +454,28 @@ function extractColors(colorThief, imgElement) {
 
     isImageProcessed = true;
     paletteViewer.style.display = "flex"; // Show swatches after extraction
+    console.log("Extracted palette:", palette); // Debug log
     renderPalette();
     savePalette();
     updatePreview();
     updateButtonVisibility(); // Show Preview button after palette generation
+
+    // Fallback visibility check
+    if (palette.length > 0) {
+      paletteViewer.style.display = "flex";
+    } else {
+      console.warn(
+        "Palette is empty after extraction. Generating a default palette."
+      );
+      palette = generateHarmonizedPalette();
+      paletteViewer.style.display = "flex";
+      renderPalette();
+    }
   } catch (err) {
     console.error("Color extraction failed: ", err);
-    showNotification("Failed to process image. Please try another.");
+    showNotification("Failed to process image. Switching to Generate Mode.");
+    currentMode = "generate";
+    generatePalette();
   }
 }
 
