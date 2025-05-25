@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://hueforge.netlify.app/sitemap.xml
